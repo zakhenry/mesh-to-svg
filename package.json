@@ -1,0 +1,17 @@
+{
+  "name": "mesh-to-svg",
+  "version": "0.0.0-develop",
+  "main": "index.js",
+  "repository": "git@github.com:zakhenry/mesh-to-svg.git",
+  "author": "Zak Henry <zak.henry@gmail.com>",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "wasm:build:prod": "wasm-pack build --release",
+    "wasm:lint:fix": "cargo fix --allow-dirty --allow-staged && cargo fmt",
+    "wasm:lint:check": "cargo check && cargo fmt -- --check"
+  },
+  "devDependencies": {
+    "semantic-release": "17.0.4"
+  }
+}
