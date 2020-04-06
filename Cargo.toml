@@ -1,6 +1,6 @@
 [package]
 name = "mesh-to-svg"
-version = "0.1.0"
+version = "0.0.0" # versioning is handled by semantic-releases
 authors = ["Zak Henry <zak.henry@gmail.com>"]
 edition = "2018"
 
