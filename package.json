@@ -10,8 +10,5 @@
     "wasm:build:prod": "wasm-pack build --release",
     "wasm:lint:fix": "cargo fix --allow-dirty --allow-staged && cargo fmt",
     "wasm:lint:check": "cargo check && cargo fmt -- --check"
-  },
-  "devDependencies": {
-    "semantic-release": "17.0.4"
   }
 }
