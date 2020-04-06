@@ -27,7 +27,7 @@ script:
   - yarn wasm:build:prod
   # prep deploy
   - rm dist/wireframe-svg/README.md && cp README.md dist/wireframe-svg
-  - cp LICENSE dist/wireframe-svg
+  - cp LICENSE pkg
 
 deploy:
   - provider: script
@@ -35,9 +35,3 @@ deploy:
     script: yarn semantic-release
     on:
       all_branches: true
-  - provider: pages
-    skip_cleanup: true
-    github_token: $GH_TOKEN
-    local_dir: dist/wireframe-svg
-    on:
-      branch: master
