@@ -94,6 +94,15 @@ Please follow the [semantic commit guidelines](https://github.com/semantic-relea
 Please raise issues for features you'd like to see, issues encountered etc. PRs are _always_ welcome, I really want to learn how to make this package better, faster, stronger!
 
 ## Tips
+
+Debug with the `log!()` macro. It takes the same form as `print!()`, i.e.
+
+```rust
+log!("Hello world, 1 + 1 is {res}", res = 1 + 1);
+```
+
+You will see the output in the browser console. If an object that is logged implements the `Display` trait, it will be logged prettily (e.g. vectors, matrices etc all look good).
+
 Calling `log!()` is super slow. Any performance benchmarks you may do with logging will be seriously polluted by the calls out to JS.
 
 As such `console_log` is an optional feature, which is turned off for the release build
