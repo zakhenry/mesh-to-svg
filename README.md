@@ -109,7 +109,9 @@ As such `console_log` is an optional feature, which is turned off for the releas
 
 Run a build with the feature `console_log` turned off:
 
+```console
 wasm-pack build --release
+```
 
 or
 
