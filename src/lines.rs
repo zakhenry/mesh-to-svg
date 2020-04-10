@@ -18,7 +18,7 @@ pub struct LineSegment2 {
 }
 
 #[derive(Copy, Clone)]
-pub struct LineSegmentCulled {
+pub struct LineSegmentCategorized {
     pub line_segment: LineSegment2,
     pub visibility: LineVisibility,
 }

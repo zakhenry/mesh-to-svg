@@ -1,4 +1,4 @@
-use crate::lines::{LineSegment2, LineSegmentCulled, LineVisibility};
+use crate::lines::{LineSegment2, LineSegmentCategorized, LineVisibility};
 use na::{Point2, Vector2};
 
 pub struct SvgLineConfig {
@@ -15,10 +15,60 @@ pub struct SvgConfig {
     pub fit_lines: bool,
 }
 
+impl SvgConfig {
+    pub fn new_default(source_canvas_width: i32, source_canvas_height: i32) -> SvgConfig {
+        SvgConfig::new(
+            source_canvas_width,
+            source_canvas_height,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+    }
+
+    pub fn new(
+        source_canvas_width: i32,
+        source_canvas_height: i32,
+        svg_config_width: Option<i32>,
+        svg_config_height: Option<i32>,
+        svg_config_margin: Option<i32>,
+        svg_config_visible_stroke_width: Option<i32>,
+        svg_config_visible_stroke: Option<String>,
+        svg_config_hide_obscured: Option<bool>,
+        svg_config_obscured_stroke_width: Option<i32>,
+        svg_config_obscured_stroke: Option<String>,
+        svg_config_fit_lines: Option<bool>,
+    ) -> SvgConfig {
+        SvgConfig {
+            width: svg_config_width.unwrap_or(source_canvas_width),
+            height: svg_config_height.unwrap_or(source_canvas_height),
+            margin: svg_config_margin.unwrap_or(100),
+            visible: SvgLineConfig {
+                stroke_width: svg_config_visible_stroke_width.unwrap_or(4),
+                stroke: svg_config_visible_stroke.unwrap_or("black".to_owned()),
+            },
+            obscured: match svg_config_hide_obscured {
+                Some(false) | None => Some(SvgLineConfig {
+                    stroke_width: svg_config_obscured_stroke_width.unwrap_or(2),
+                    stroke: svg_config_obscured_stroke.unwrap_or("grey".to_owned()),
+                }),
+                Some(true) => None,
+            },
+            fit_lines: svg_config_fit_lines.unwrap_or(true),
+        }
+    }
+}
+
 fn scale_screen_space_lines(
-    screen_space_lines: &[LineSegmentCulled],
+    screen_space_lines: &[LineSegmentCategorized],
     svg_config: &SvgConfig,
-) -> Vec<LineSegmentCulled> {
+) -> Vec<LineSegmentCategorized> {
     let all_points: Vec<Point2<f32>> = screen_space_lines
         .iter()
         .flat_map(|seg| vec![seg.line_segment.from, seg.line_segment.to])
@@ -48,7 +98,7 @@ fn scale_screen_space_lines(
 
     let scaled_points = screen_space_lines
         .iter()
-        .map(|line| LineSegmentCulled {
+        .map(|line| LineSegmentCategorized {
             visibility: line.visibility,
             line_segment: LineSegment2 {
                 from: ((&line.line_segment.from - half_viewport) * scale) + half_canvas,
@@ -61,7 +111,7 @@ fn scale_screen_space_lines(
 }
 
 pub fn screen_space_lines_to_fitted_svg(
-    screen_space_lines: &[LineSegmentCulled],
+    screen_space_lines: &[LineSegmentCategorized],
     svg_config: &SvgConfig,
 ) -> String {
     let svg = match svg_config.fit_lines {
@@ -75,7 +125,7 @@ pub fn screen_space_lines_to_fitted_svg(
     svg
 }
 
-fn line_segments_to_svg(segments: &[LineSegmentCulled], config: &SvgConfig) -> String {
+fn line_segments_to_svg(segments: &[LineSegmentCategorized], config: &SvgConfig) -> String {
     let (visible, obscured) = segments.iter().partition(|&seg| match seg.visibility {
         LineVisibility::VISIBLE => true,
         _ => false,
@@ -96,7 +146,7 @@ fn line_segments_to_svg(segments: &[LineSegmentCulled], config: &SvgConfig) -> S
     )
 }
 
-fn create_path_element(lines: Vec<LineSegmentCulled>, line_config: &SvgLineConfig) -> String {
+fn create_path_element(lines: Vec<LineSegmentCategorized>, line_config: &SvgLineConfig) -> String {
     let mut path_def = "".to_string();
     let mut current: Option<Point2<f32>> = None;
 

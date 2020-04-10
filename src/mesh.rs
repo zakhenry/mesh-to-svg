@@ -33,7 +33,7 @@ impl Wireframe {
 
         let indices = match maybe_indices {
             Some(x) => x,
-            None => (0..vertices.len()/3).collect()
+            None => (0..vertices.len() / 3).collect(),
         };
 
         for i in 0..vertices.len() / 3 {

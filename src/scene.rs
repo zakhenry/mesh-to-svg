@@ -1,6 +1,9 @@
 use crate::lines::{dedupe_lines, LineSegment2, LineSegment3, ProjectedLine};
 use crate::mesh::{Facet, Mesh};
 use na::{Matrix4, Point2, Point3, Vector3};
+use std::fmt;
+use std::fmt::Display;
+use wasm_bindgen::__rt::core::fmt::{Error, Formatter};
 
 pub struct Scene {
     pub width: f32,
@@ -13,7 +16,7 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn new(
+    pub fn new_from_wasm(
         width: i32,
         height: i32,
         view: Box<[f32]>,
@@ -24,17 +27,88 @@ impl Scene {
         let view_matrix = Scene::matrix_from_boxed_float_array(view);
         let projection_matrix = Scene::matrix_from_boxed_float_array(projection);
         let mesh_world_matrix = Scene::matrix_from_boxed_float_array(mesh_world);
-        let transformation_matrix = &projection_matrix * &view_matrix * &mesh_world_matrix;
 
+        Scene::new(width as f32, height as f32, view_matrix, projection_matrix, mesh_world_matrix, Vector3::new(camera[0], camera[1], camera[2]))
+    }
+
+    pub fn new(width: f32, height: f32, view_matrix: Matrix4<f32>, projection_matrix: Matrix4<f32>, mesh_world_matrix: Matrix4<f32>, camera_forward_vector: Vector3<f32>) -> Scene {
         Scene {
-            width: width as f32,
-            height: height as f32,
+            width,
+            height,
             view_matrix,
             projection_matrix,
             mesh_world_matrix,
-            camera_forward_vector: Vector3::new(camera[0], camera[1], camera[2]),
-            transformation_matrix,
+            camera_forward_vector,
+            transformation_matrix : &projection_matrix * &view_matrix * &mesh_world_matrix,
         }
+    }
+
+    pub fn new_test() -> Scene {
+
+        /*
+        Scene: Scene: width: 800
+        height: 600
+        view_matrix:
+        ┌                                                                                                     ┐
+        │               0.70710677                        0               0.70710677 -0.000000000000014210855 │
+        │               0.35355338                0.8660254              -0.35355338 -0.000000000000021316282 │
+        │              -0.61237246                      0.5               0.61237246                     -200 │
+        │                        0                        0                        0                        1 │
+        └                                                                                                     ┘
+
+
+        projection_matrix:
+        ┌                                 ┐
+        │   0.075       0       0       0 │
+        │       0     0.1       0       0 │
+        │       0       0 -0.0001       0 │
+        │       0       0       0       1 │
+        └                                 ┘
+
+
+        mesh_world_matrix:
+        ┌                                                                                                     ┐
+        │                        1                        0                        0                        0 │
+        │                        0 0.0000000000000002220446                        1                        0 │
+        │                        0                       -1 0.0000000000000002220446                        0 │
+        │                        0                        0                        0                        1 │
+        └                                                                                                     ┘
+
+
+        camera_forward_vector:
+        ┌             ┐
+        │ -121.862114 │
+        │        99.5 │
+        │  121.862114 │
+        └             ┘
+*/
+
+        let view_matrix = Matrix4::new(
+                       0.70710677,                        0.0,               0.70710677, -0.000000000000014210855,
+                       0.35355338,                0.8660254,              -0.35355338, -0.000000000000021316282,
+                      -0.61237246,                      0.5,               0.61237246,                     -200.0,
+                                0.0,                        0.0,                        0.0,                        1.0,
+
+        );
+
+        let projection_matrix = Matrix4::new(
+         0.075,       0.0,       0.0,       0.0,
+             0.0,       0.1,       0.0,       0.0,
+             0.0,       0.0,   -0.0001,       0.0,
+             0.0,       0.0,       0.0,       1.0,
+        );
+
+        let mesh_world_matrix = Matrix4::new(
+                                1.0,                        0.0,                        0.0,                        0.0,
+                                0.0, 0.0000000000000002220446,                        1.0,                        0.0,
+                                0.0,                       -1.0, 0.0000000000000002220446,                        0.0,
+                                0.0,                        0.0,                        0.0,                        1.0,
+        );
+
+        let camera_forward_vector = Vector3::new(-121.862114,99.5,121.862114);
+
+
+        Scene::new(800.0, 600.0, view_matrix, projection_matrix, mesh_world_matrix, camera_forward_vector)
     }
 
     fn matrix_from_boxed_float_array(data: Box<[f32]>) -> Matrix4<f32> {
@@ -86,6 +160,27 @@ impl Scene {
             .collect();
 
         dedupe_lines(projected_lines)
+    }
+}
+
+impl Display for Scene {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Scene: \
+width: {width}
+height: {height}
+view_matrix: {view_matrix}
+projection_matrix: {projection_matrix}
+mesh_world_matrix: {mesh_world_matrix}
+camera_forward_vector: {camera_forward_vector}",
+            width = self.width,
+            height = self.height,
+            view_matrix = self.view_matrix,
+            projection_matrix = self.projection_matrix,
+            mesh_world_matrix = self.mesh_world_matrix,
+            camera_forward_vector = self.camera_forward_vector
+        )
     }
 }
 
