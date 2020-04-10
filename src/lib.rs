@@ -1,7 +1,7 @@
 #[macro_use]
 mod utils;
 mod lines;
-mod mesh;
+pub mod mesh;
 mod scene;
 mod svg_renderer;
 
@@ -64,8 +64,8 @@ pub fn mesh_to_svg_lines(
         fit_lines: svg_config_fit_lines.unwrap_or(true),
     };
 
-    let mesh = Mesh::new(mesh_indices, mesh_vertices, mesh_normals);
-    let wireframe = Wireframe::new(wireframe_indices, wireframe_vertices);
+    let mesh = Mesh::new_from_wasm(mesh_indices, mesh_vertices, mesh_normals);
+    let wireframe = Wireframe::new_from_wasm(wireframe_indices, wireframe_vertices);
     let scene = scene::Scene::new(
         canvas_width,
         canvas_height,

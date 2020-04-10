@@ -25,20 +25,28 @@ pub struct Facet {
 }
 
 impl Wireframe {
-    pub fn new(indices_data: Box<[usize]>, vertices_data: Box<[f32]>) -> Wireframe {
-        let mut points = Vec::with_capacity(vertices_data.len() / 3);
+    pub fn new_from_wasm(indices_data: Box<[usize]>, vertices_data: Box<[f32]>) -> Wireframe {
+        Wireframe::new(Some(indices_data.into_vec()), vertices_data.into_vec())
+    }
+    pub fn new(maybe_indices: Option<Vec<usize>>, vertices: Vec<f32>) -> Wireframe {
+        let mut points = Vec::with_capacity(vertices.len() / 3);
 
-        for i in 0..vertices_data.len() / 3 {
+        let indices = match maybe_indices {
+            Some(x) => x,
+            None => (0..vertices.len()/3).collect()
+        };
+
+        for i in 0..vertices.len() / 3 {
             points.push(Point3::new(
-                vertices_data[i * 3],
-                vertices_data[i * 3 + 1],
-                vertices_data[i * 3 + 2],
+                vertices[i * 3],
+                vertices[i * 3 + 1],
+                vertices[i * 3 + 2],
             ))
         }
 
         Wireframe {
-            indices: indices_data.into_vec(),
-            vertices: vertices_data.into_vec(),
+            indices,
+            vertices,
             points,
         }
     }
@@ -58,12 +66,21 @@ impl Wireframe {
 }
 
 impl Mesh {
-    pub fn new(
+    pub fn new_from_wasm(
         indices_data: Box<[usize]>,
         vertices_data: Box<[f32]>,
         normals_data: Box<[f32]>,
     ) -> Mesh {
-        let base_mesh = Wireframe::new(indices_data, vertices_data);
+        Mesh::new(
+            Some(indices_data.into_vec()),
+            vertices_data.into_vec(),
+            normals_data.into_vec(),
+        )
+    }
+
+    pub fn new(indices: Option<Vec<usize>>, vertices: Vec<f32>, normals_data: Vec<f32>) -> Mesh {
+        let base_mesh = Wireframe::new(indices, vertices);
+
         let mut normals = Vec::with_capacity(normals_data.len() / 3);
 
         for i in (0..normals_data.len()).step_by(3) {
