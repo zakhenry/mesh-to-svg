@@ -65,7 +65,7 @@ impl SvgConfig {
     }
 }
 
-fn scale_screen_space_lines(
+pub fn scale_screen_space_lines(
     screen_space_lines: &[LineSegmentCategorized],
     svg_config: &SvgConfig,
 ) -> Vec<LineSegmentCategorized> {

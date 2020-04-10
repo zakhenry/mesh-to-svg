@@ -8,15 +8,22 @@ use serde_json;
 
 extern crate clap;
 use clap::{App, Arg};
+extern crate term_size;
+
+extern crate drawille;
+use drawille::Canvas;
 
 mod lines;
 mod mesh;
 mod scene;
 mod svg_renderer;
 use mesh_to_svg::find_categorized_line_segments;
+use mesh_to_svg::lines::{LineSegmentCategorized, LineVisibility};
 use mesh_to_svg::mesh::{Mesh, Wireframe};
 use mesh_to_svg::scene::Scene;
-use mesh_to_svg::svg_renderer::{screen_space_lines_to_fitted_svg, SvgConfig};
+use mesh_to_svg::svg_renderer::{
+    scale_screen_space_lines, screen_space_lines_to_fitted_svg, SvgConfig,
+};
 use std::fs::File;
 use std::io::BufReader;
 use std::{fmt, io};
@@ -107,7 +114,55 @@ fn main() {
 
     let segments = find_categorized_line_segments(&mesh, &wireframe, &scene);
 
-    let svg = screen_space_lines_to_fitted_svg(&segments, &svg_config);
+    // let svg = screen_space_lines_to_fitted_svg(&segments, &svg_config);
+    // print!("{}", svg);
 
-    print!("{}", svg);
+    let terminal_drawing = draw_terminal(segments, &scene);
+
+    print!("{}", terminal_drawing);
+}
+
+fn draw_terminal(segments: Vec<LineSegmentCategorized>, scene: &Scene) -> String {
+
+    let (w, _) = term_size::dimensions().unwrap_or((100, 0));
+
+    let term_width: i32 = w as i32 * 2 - 1;
+
+    let svg_config = SvgConfig::new(
+        scene.width as i32,
+        scene.height as i32,
+        Some(term_width as i32),
+        Some((scene.width / scene.height) as i32 * (term_width as i32)),
+        Some(5),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
+
+    let lines: Vec<LineSegmentCategorized> = scale_screen_space_lines(&segments, &svg_config)
+        .into_iter()
+        .filter(|line| match line.visibility {
+            LineVisibility::VISIBLE => true,
+            LineVisibility::OBSCURED => false,
+        })
+        .collect();
+
+    let mut canvas = Canvas::new(svg_config.width as u32, svg_config.height as u32);
+
+
+    println!("svg_config.width {}", svg_config.width);
+
+    for line in lines {
+        canvas.line(
+            line.line_segment.from.x as u32,
+            line.line_segment.from.y as u32,
+            line.line_segment.to.x as u32,
+            line.line_segment.to.y as u32,
+        );
+    }
+
+    canvas.frame()
 }

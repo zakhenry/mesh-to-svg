@@ -15,7 +15,7 @@ use crate::utils::set_panic_hook;
 
 #[macro_use]
 mod utils;
-mod lines;
+pub mod lines;
 pub mod mesh;
 pub mod scene;
 pub mod svg_renderer;
