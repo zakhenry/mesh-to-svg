@@ -1,25 +1,26 @@
 #[macro_use]
+extern crate approx;
+extern crate nalgebra as na;
+extern crate web_sys;
+
+use wasm_bindgen::prelude::*;
+
+use lines::LineSegmentCategorized;
+use mesh::{Mesh, Wireframe};
+
+use crate::lines::{get_visibility, split_lines_by_intersection};
+use crate::scene::{Ray, Scene};
+use crate::svg_renderer::SvgConfig;
+use crate::utils::set_panic_hook;
+
+#[macro_use]
 mod utils;
 mod lines;
 pub mod mesh;
 pub mod scene;
 pub mod svg_renderer;
 
-use mesh::{Mesh, Wireframe};
-use wasm_bindgen::prelude::*;
-
-extern crate nalgebra as na;
-
-use crate::lines::{get_visibility, split_lines_by_intersection};
-use crate::scene::{Ray, Scene};
-use crate::svg_renderer::{SvgConfig, SvgLineConfig};
-use crate::utils::set_panic_hook;
-use lines::LineSegmentCategorized;
-
-extern crate web_sys;
-
-#[macro_use]
-extern crate approx; // For the macro relative_eq!
+// For the macro relative_eq!
 
 #[wasm_bindgen]
 pub fn mesh_to_svg_lines(
@@ -33,7 +34,6 @@ pub fn mesh_to_svg_lines(
     view_matrix: Box<[f32]>,
     projection_matrix: Box<[f32]>,
     mesh_world_matrix: Box<[f32]>,
-    camera_forward_vector: Box<[f32]>,
     svg_config_width: Option<i32>,
     svg_config_height: Option<i32>,
     svg_config_margin: Option<i32>,
@@ -68,10 +68,9 @@ pub fn mesh_to_svg_lines(
         view_matrix,
         projection_matrix,
         mesh_world_matrix,
-        camera_forward_vector,
     );
 
-    log!("Scene: {}", scene);
+    // log!("Scene: {}", scene);
 
     let segments = find_categorized_line_segments(&mesh, &wireframe, &scene);
 

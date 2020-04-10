@@ -13,13 +13,13 @@ mod lines;
 mod mesh;
 mod scene;
 mod svg_renderer;
-use mesh_to_svg::scene::{Scene};
-use mesh_to_svg::mesh::{Mesh, Wireframe};
 use mesh_to_svg::find_categorized_line_segments;
-use mesh_to_svg::svg_renderer::{SvgConfig, screen_space_lines_to_fitted_svg};
-use std::{fmt, io};
+use mesh_to_svg::mesh::{Mesh, Wireframe};
+use mesh_to_svg::scene::Scene;
+use mesh_to_svg::svg_renderer::{screen_space_lines_to_fitted_svg, SvgConfig};
 use std::fs::File;
 use std::io::BufReader;
+use std::{fmt, io};
 use wasm_bindgen::__rt::core::fmt::{Error, Formatter};
 
 #[derive(Serialize, Deserialize)]
@@ -57,14 +57,16 @@ impl fmt::Debug for ParserError {
 
 impl JsonMesh {
     pub fn to_mesh(&self) -> Result<(Mesh, Wireframe), ParserError> {
-
         Ok((
             Mesh::new(
                 self.mesh.indices.to_owned(),
                 self.mesh.positions.to_owned(),
                 self.mesh.normals.to_owned(),
             ),
-            Wireframe::new(self.edgesMesh.indices.to_owned(), self.edgesMesh.positions.to_owned()),
+            Wireframe::new(
+                self.edgesMesh.indices.to_owned(),
+                self.edgesMesh.positions.to_owned(),
+            ),
         ))
     }
 }
@@ -108,5 +110,4 @@ fn main() {
     let svg = screen_space_lines_to_fitted_svg(&segments, &svg_config);
 
     print!("{}", svg);
-
 }

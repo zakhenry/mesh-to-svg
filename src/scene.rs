@@ -1,9 +1,10 @@
+use std::fmt;
+use std::fmt::{Display, Formatter};
+
+use na::{Matrix4, Point2, Point3, Vector3};
+
 use crate::lines::{dedupe_lines, LineSegment2, LineSegment3, ProjectedLine};
 use crate::mesh::{Facet, Mesh};
-use na::{Matrix4, Point2, Point3, Vector3};
-use std::fmt;
-use std::fmt::Display;
-use wasm_bindgen::__rt::core::fmt::{Error, Formatter};
 
 pub struct Scene {
     pub width: f32,
@@ -22,93 +23,80 @@ impl Scene {
         view: Box<[f32]>,
         projection: Box<[f32]>,
         mesh_world: Box<[f32]>,
-        camera: Box<[f32]>,
     ) -> Scene {
         let view_matrix = Scene::matrix_from_boxed_float_array(view);
         let projection_matrix = Scene::matrix_from_boxed_float_array(projection);
         let mesh_world_matrix = Scene::matrix_from_boxed_float_array(mesh_world);
 
-        Scene::new(width as f32, height as f32, view_matrix, projection_matrix, mesh_world_matrix, Vector3::new(camera[0], camera[1], camera[2]))
+        Scene::new(
+            width as f32,
+            height as f32,
+            view_matrix,
+            projection_matrix,
+            mesh_world_matrix,
+        )
     }
 
-    pub fn new(width: f32, height: f32, view_matrix: Matrix4<f32>, projection_matrix: Matrix4<f32>, mesh_world_matrix: Matrix4<f32>, camera_forward_vector: Vector3<f32>) -> Scene {
+    pub fn new(
+        width: f32,
+        height: f32,
+        view_matrix: Matrix4<f32>,
+        projection_matrix: Matrix4<f32>,
+        mesh_world_matrix: Matrix4<f32>,
+    ) -> Scene {
         Scene {
             width,
             height,
             view_matrix,
             projection_matrix,
             mesh_world_matrix,
-            camera_forward_vector,
-            transformation_matrix : &projection_matrix * &view_matrix * &mesh_world_matrix,
+            // forward vector is the first three columns of the third row of the view matrix
+            camera_forward_vector: Vector3::new(
+                view_matrix[2].to_owned(),
+                view_matrix[6].to_owned(),
+                view_matrix[10].to_owned(),
+            ),
+            transformation_matrix: &projection_matrix * &view_matrix * &mesh_world_matrix,
         }
     }
 
+    // these values are hardcoded by manually setting a value in babylonjs and reading out the values with `log!("{}", scene);`
     pub fn new_test() -> Scene {
-
-        /*
-        Scene: Scene: width: 800
-        height: 600
-        view_matrix:
-        ┌                                                                                                     ┐
-        │               0.70710677                        0               0.70710677 -0.000000000000014210855 │
-        │               0.35355338                0.8660254              -0.35355338 -0.000000000000021316282 │
-        │              -0.61237246                      0.5               0.61237246                     -200 │
-        │                        0                        0                        0                        1 │
-        └                                                                                                     ┘
-
-
-        projection_matrix:
-        ┌                                 ┐
-        │   0.075       0       0       0 │
-        │       0     0.1       0       0 │
-        │       0       0 -0.0001       0 │
-        │       0       0       0       1 │
-        └                                 ┘
-
-
-        mesh_world_matrix:
-        ┌                                                                                                     ┐
-        │                        1                        0                        0                        0 │
-        │                        0 0.0000000000000002220446                        1                        0 │
-        │                        0                       -1 0.0000000000000002220446                        0 │
-        │                        0                        0                        0                        1 │
-        └                                                                                                     ┘
-
-
-        camera_forward_vector:
-        ┌             ┐
-        │ -121.862114 │
-        │        99.5 │
-        │  121.862114 │
-        └             ┘
-*/
-
+        #[rustfmt::skip]
         let view_matrix = Matrix4::new(
-                       0.70710677,                        0.0,               0.70710677, -0.000000000000014210855,
-                       0.35355338,                0.8660254,              -0.35355338, -0.000000000000021316282,
-                      -0.61237246,                      0.5,               0.61237246,                     -200.0,
-                                0.0,                        0.0,                        0.0,                        1.0,
-
+            0.79758435,        0.0,   0.6032074,        0.0,
+             0.2850845, 0.88126934, -0.37694982,        0.0,
+            -0.5315882, 0.47261438,  0.70288664, -594.28314,
+                   0.0,        0.0,         0.0,        1.0,
         );
 
+        #[rustfmt::skip]
         let projection_matrix = Matrix4::new(
-         0.075,       0.0,       0.0,       0.0,
-             0.0,       0.1,       0.0,       0.0,
-             0.0,       0.0,   -0.0001,       0.0,
-             0.0,       0.0,       0.0,       1.0,
+            0.021944271,    0.0,            0.0,        0.0,
+            0.0,            0.029259028,    0.0,        0.0,
+            0.0,            0.0,            -0.0001,    0.0,
+            0.0,            0.0,            0.0,        1.0,
         );
 
+        // Z-up
+        #[rustfmt::skip]
         let mesh_world_matrix = Matrix4::new(
-                                1.0,                        0.0,                        0.0,                        0.0,
-                                0.0, 0.0000000000000002220446,                        1.0,                        0.0,
-                                0.0,                       -1.0, 0.0000000000000002220446,                        0.0,
-                                0.0,                        0.0,                        0.0,                        1.0,
+            1.0,    0.0,    0.0,    0.0,
+            0.0,    0.0,    1.0,    0.0,
+            0.0,    -1.0,   0.0,    0.0,
+            0.0,    0.0,    0.0,    1.0,
         );
 
-        let camera_forward_vector = Vector3::new(-121.862114,99.5,121.862114);
+        // no transform
+        // let mesh_world_matrix = Matrix4::identity();
 
-
-        Scene::new(800.0, 600.0, view_matrix, projection_matrix, mesh_world_matrix, camera_forward_vector)
+        Scene::new(
+            800.0,
+            600.0,
+            view_matrix,
+            projection_matrix,
+            mesh_world_matrix,
+        )
     }
 
     fn matrix_from_boxed_float_array(data: Box<[f32]>) -> Matrix4<f32> {
