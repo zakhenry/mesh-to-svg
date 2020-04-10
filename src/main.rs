@@ -57,13 +57,14 @@ impl fmt::Debug for ParserError {
 
 impl JsonMesh {
     pub fn to_mesh(&self) -> Result<(Mesh, Wireframe), ParserError> {
+
         Ok((
             Mesh::new(
                 self.mesh.indices.to_owned(),
                 self.mesh.positions.to_owned(),
                 self.mesh.normals.to_owned(),
             ),
-            Wireframe::new(self.mesh.indices.to_owned(), self.mesh.positions.to_owned()),
+            Wireframe::new(self.edgesMesh.indices.to_owned(), self.edgesMesh.positions.to_owned()),
         ))
     }
 }
