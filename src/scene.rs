@@ -12,8 +12,6 @@ pub struct Scene {
     pub view_matrix: Matrix4<f32>,
     pub projection_matrix: Matrix4<f32>,
     pub mesh_world_matrix: Matrix4<f32>,
-    pub camera_forward_vector: Vector3<f32>,
-    transformation_matrix: Matrix4<f32>,
 }
 
 impl Scene {
@@ -50,14 +48,22 @@ impl Scene {
             view_matrix,
             projection_matrix,
             mesh_world_matrix,
-            // forward vector is the first three columns of the third row of the view matrix
-            camera_forward_vector: Vector3::new(
-                view_matrix[2].to_owned(),
-                view_matrix[6].to_owned(),
-                view_matrix[10].to_owned(),
-            ),
-            transformation_matrix: &projection_matrix * &view_matrix * &mesh_world_matrix,
         }
+    }
+
+    // @todo bench if this fixed value should be optimised by memoization or similar
+    pub fn transformation_matrix(&self) -> Matrix4<f32> {
+        &self.projection_matrix * &self.view_matrix * &self.mesh_world_matrix
+    }
+
+    // @todo bench if this fixed value should be optimised by memoization or similar
+    // forward vector is the first three columns of the third row of the view matrix
+    pub fn camera_forward_vector(&self) -> Vector3<f32> {
+        Vector3::new(
+            self.view_matrix[2].to_owned(),
+            self.view_matrix[6].to_owned(),
+            self.view_matrix[10].to_owned(),
+        )
     }
 
     // these values are hardcoded by manually setting a value in babylonjs and reading out the values with `log!("{}", scene);`
@@ -107,7 +113,7 @@ impl Scene {
     }
 
     pub fn project_point(&self, point: &Point3<f32>) -> Point2<f32> {
-        let transformed = &self.transformation_matrix.transform_point(&point);
+        let transformed = &self.transformation_matrix().transform_point(&point);
 
         Point2::new(
             (transformed.x + 1.0) / 2.0 * self.width,
@@ -116,7 +122,7 @@ impl Scene {
     }
 
     pub fn unproject_point(&self, point: &Point2<f32>) -> Point3<f32> {
-        let inverted = &self.transformation_matrix.try_inverse().unwrap();
+        let inverted = &self.transformation_matrix().try_inverse().unwrap();
 
         let projection_point = Point3::new(
             (point.x / self.width) * 2.0 - 1.0,
@@ -167,7 +173,7 @@ camera_forward_vector: {camera_forward_vector}",
             view_matrix = self.view_matrix,
             projection_matrix = self.projection_matrix,
             mesh_world_matrix = self.mesh_world_matrix,
-            camera_forward_vector = self.camera_forward_vector
+            camera_forward_vector = self.camera_forward_vector()
         )
     }
 }

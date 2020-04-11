@@ -184,8 +184,8 @@ impl Mesh {
                     .mesh_world_matrix
                     .transform_vector(&candidate.adjacent_triangle_b_normal);
 
-                let a_facing = scene.camera_forward_vector.dot(&normal_a_world) > 0.0;
-                let b_facing = scene.camera_forward_vector.dot(&normal_b_world) > 0.0;
+                let a_facing = scene.camera_forward_vector().dot(&normal_a_world) > 0.0;
+                let b_facing = scene.camera_forward_vector().dot(&normal_b_world) > 0.0;
 
                 a_facing != b_facing
             })

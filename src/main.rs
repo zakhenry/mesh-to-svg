@@ -1,13 +1,19 @@
 extern crate clap;
+extern crate ctrlc;
 extern crate drawille;
+extern crate log_update;
 extern crate term_size;
 
-use std::fmt;
 use std::fs::File;
+use std::io::stdout;
 use std::io::BufReader;
+use std::thread::sleep;
+use std::time::Duration;
+use std::{fmt, process};
 
 use clap::{App, Arg, ArgMatches, SubCommand};
 use drawille::Canvas;
+use log_update::LogUpdate;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use wasm_bindgen::__rt::core::fmt::Formatter;
@@ -19,6 +25,10 @@ use mesh_to_svg::scene::Scene;
 use mesh_to_svg::svg_renderer::{
     scale_screen_space_lines, screen_space_lines_to_fitted_svg, SvgConfig,
 };
+use nalgebra::{Matrix4, Rotation3, Vector3};
+use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, PI};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 #[derive(Serialize, Deserialize)]
 struct MeshData {
@@ -101,6 +111,11 @@ fn main() {
                         .help(
                             "Output height [defaults to maintain aspect ratio with scene source]",
                         ),
+                )
+                .arg(
+                    Arg::with_name("animate")
+                        .long("animate")
+                        .help("Animate the terminal"),
                 ),
         )
         .get_matches();
@@ -124,9 +139,12 @@ fn main() {
     let segments = find_categorized_line_segments(&mesh, &wireframe, &scene);
 
     if let Some(term_subcommand) = arg_matches.subcommand_matches("term") {
-        let terminal_drawing = draw_terminal(segments, &scene, &term_subcommand);
-
-        println!("{}", terminal_drawing);
+        if term_subcommand.is_present("animate") {
+            animate(&mesh, &wireframe, &term_subcommand);
+        } else {
+            let terminal_drawing = draw_terminal(segments, &scene, &term_subcommand);
+            println!("{}", terminal_drawing);
+        }
     } else {
         let svg = screen_space_lines_to_fitted_svg(&segments, &svg_config);
         println!("{}", svg);
@@ -165,7 +183,7 @@ fn draw_terminal(
         None,
         None,
         None,
-        None,
+        Some(false),
     );
 
     let lines: Vec<LineSegmentCategorized> = scale_screen_space_lines(&segments, &svg_config)
@@ -188,4 +206,46 @@ fn draw_terminal(
     }
 
     canvas.frame()
+}
+
+fn animate(mesh: &Mesh, wireframe: &Wireframe, matches: &ArgMatches) {
+    let mut log_update = LogUpdate::new(stdout()).unwrap();
+
+    let running = Arc::new(AtomicBool::new(true));
+
+    let r = running.clone();
+
+    ctrlc::set_handler(move || {
+        r.store(false, Ordering::SeqCst);
+    })
+    .expect("Error setting Ctrl-C handler");
+
+    let mut scene_angles: Vec<String> = vec![];
+
+    let count = 50;
+
+    let up = Vector3::z_axis();
+    let angle = (PI * 2.0) / count as f32;
+    let rotation: Matrix4<f32> = Rotation3::from_axis_angle(&up, angle).to_homogeneous();
+
+    let mut scene = Scene::new_test();
+    for i in 0..count {
+        scene.mesh_world_matrix *= &rotation;
+        let segments = find_categorized_line_segments(&mesh, &wireframe, &scene);
+        let terminal_drawing = draw_terminal(segments, &scene, &matches);
+
+        scene_angles.push(terminal_drawing);
+    }
+
+    loop {
+        for drawing in &scene_angles {
+            log_update.render(&format!("{}", drawing)).unwrap();
+            sleep(Duration::from_millis(200));
+
+            if !running.load(Ordering::SeqCst) {
+                log_update.done(); // done will print the cursor unhiding control char
+                process::exit(0);
+            }
+        }
+    }
 }
