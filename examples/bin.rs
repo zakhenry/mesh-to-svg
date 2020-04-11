@@ -244,6 +244,11 @@ fn animate(mesh: &Mesh, wireframe: &Wireframe, matches: &ArgMatches) {
 
         log_update.render(&format!("{}", progress)).unwrap();
         scene_angles.push(terminal_drawing);
+
+        if !running.load(Ordering::SeqCst) {
+            &log_update.done().unwrap(); // done will print the cursor unhiding control char
+            process::exit(0);
+        }
     }
 
     loop {

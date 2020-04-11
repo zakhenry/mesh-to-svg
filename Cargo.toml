@@ -7,19 +7,16 @@ edition = "2018"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[[example]]
+path = "examples/bin.rs"
+name = "mesh-to-svg"
+
 [features]
 default = ["console_error_panic_hook"]
 console_log = []
 
 [dependencies]
 wasm-bindgen = "0.2"
-serde = { version = "1.0", features = ["derive"], optional = true }
-serde_json = { version = "1.0", optional = true }
-drawille = { version = "0.2.3", optional = true }
-clap = { version = "2.33.0", optional = true }
-term_size = { version = "0.3.1", optional = true }
-log-update = { version = "0.1.0", optional = true }
-ctrlc = { version = "3.1.4", optional = true }
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
@@ -36,6 +33,13 @@ features = ["console"]
 
 [dev-dependencies]
 wasm-bindgen-test = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+drawille = "0.2.3"
+clap = "2.33.0"
+term_size = "0.3.1"
+log-update = "0.1.0"
+ctrlc = "3.1.4"
 
 [profile.release]
 # Tell `rustc` to optimize for small code size. https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/codegen-options/index.md#opt-level
