@@ -4,9 +4,12 @@ extern crate drawille;
 extern crate log_update;
 extern crate term_size;
 
+use std::f32::consts::PI;
 use std::fs::File;
 use std::io::stdout;
 use std::io::BufReader;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 use std::{fmt, process};
@@ -14,6 +17,7 @@ use std::{fmt, process};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use drawille::Canvas;
 use log_update::LogUpdate;
+use nalgebra::{Matrix4, Rotation3, Vector3};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use wasm_bindgen::__rt::core::fmt::Formatter;
@@ -25,10 +29,6 @@ use mesh_to_svg::scene::Scene;
 use mesh_to_svg::svg_renderer::{
     scale_screen_space_lines, screen_space_lines_to_fitted_svg, SvgConfig,
 };
-use nalgebra::{Matrix4, Rotation3, Vector3};
-use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, PI};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 
 #[derive(Serialize, Deserialize)]
 struct MeshData {
@@ -242,17 +242,17 @@ fn animate(mesh: &Mesh, wireframe: &Wireframe, matches: &ArgMatches) {
             i, count, duration, &terminal_drawing
         );
 
-        log_update.render(&format!("{}", progress));
+        log_update.render(&format!("{}", progress)).unwrap();
         scene_angles.push(terminal_drawing);
     }
 
     loop {
         for drawing in &scene_angles {
-            log_update.render(&format!("{}", drawing));
+            log_update.render(&format!("{}", drawing)).unwrap();
             sleep(Duration::from_millis(200));
 
             if !running.load(Ordering::SeqCst) {
-                log_update.done(); // done will print the cursor unhiding control char
+                log_update.done().unwrap(); // done will print the cursor unhiding control char
                 process::exit(0);
             }
         }
