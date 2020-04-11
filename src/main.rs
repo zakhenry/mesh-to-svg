@@ -8,7 +8,7 @@ use std::fs::File;
 use std::io::stdout;
 use std::io::BufReader;
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use std::{fmt, process};
 
 use clap::{App, Arg, ArgMatches, SubCommand};
@@ -231,15 +231,24 @@ fn animate(mesh: &Mesh, wireframe: &Wireframe, matches: &ArgMatches) {
     let mut scene = Scene::new_test();
     for i in 0..count {
         scene.mesh_world_matrix *= &rotation;
+
+        let start = Instant::now();
         let segments = find_categorized_line_segments(&mesh, &wireframe, &scene);
         let terminal_drawing = draw_terminal(segments, &scene, &matches);
+        let duration = start.elapsed();
 
+        let progress = format!(
+            "Rendered {} of {} angles ({:?})\n\n{}",
+            i, count, duration, &terminal_drawing
+        );
+
+        log_update.render(&format!("{}", progress));
         scene_angles.push(terminal_drawing);
     }
 
     loop {
         for drawing in &scene_angles {
-            log_update.render(&format!("{}", drawing)).unwrap();
+            log_update.render(&format!("{}", drawing));
             sleep(Duration::from_millis(200));
 
             if !running.load(Ordering::SeqCst) {
