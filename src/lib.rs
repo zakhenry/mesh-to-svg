@@ -5,13 +5,11 @@ extern crate web_sys;
 
 use wasm_bindgen::prelude::*;
 
-use lines::LineSegmentCategorized;
+use lines::{get_visibility, split_lines_by_intersection, LineSegmentCategorized};
 use mesh::{Mesh, Wireframe};
-
-use crate::lines::{get_visibility, split_lines_by_intersection};
-use crate::scene::{Ray, Scene};
-use crate::svg_renderer::SvgConfig;
-use crate::utils::set_panic_hook;
+use scene::{Ray, Scene};
+use svg_renderer::{screen_space_lines_to_fitted_svg, SvgConfig};
+use utils::set_panic_hook;
 
 #[macro_use]
 mod utils;
@@ -74,7 +72,7 @@ pub fn mesh_to_svg_lines(
 
     let segments = find_categorized_line_segments(&mesh, &wireframe, &scene);
 
-    svg_renderer::screen_space_lines_to_fitted_svg(&segments, &svg_config)
+    screen_space_lines_to_fitted_svg(&segments, &svg_config)
 }
 
 pub fn find_categorized_line_segments(

@@ -1,22 +1,17 @@
-extern crate nalgebra as na;
-
-#[macro_use]
-extern crate approx; // For the macro relative_eq!
-
-use serde::{Deserialize, Serialize};
-use serde_json;
-
 extern crate clap;
-use clap::{App, Arg};
+extern crate drawille;
 extern crate term_size;
 
-extern crate drawille;
-use drawille::Canvas;
+use std::fmt;
+use std::fs::File;
+use std::io::BufReader;
 
-mod lines;
-mod mesh;
-mod scene;
-mod svg_renderer;
+use clap::{App, Arg, ArgMatches, SubCommand};
+use drawille::Canvas;
+use serde::{Deserialize, Serialize};
+use serde_json;
+use wasm_bindgen::__rt::core::fmt::Formatter;
+
 use mesh_to_svg::find_categorized_line_segments;
 use mesh_to_svg::lines::{LineSegmentCategorized, LineVisibility};
 use mesh_to_svg::mesh::{Mesh, Wireframe};
@@ -24,10 +19,6 @@ use mesh_to_svg::scene::Scene;
 use mesh_to_svg::svg_renderer::{
     scale_screen_space_lines, screen_space_lines_to_fitted_svg, SvgConfig,
 };
-use std::fs::File;
-use std::io::BufReader;
-use std::{fmt, io};
-use wasm_bindgen::__rt::core::fmt::{Error, Formatter};
 
 #[derive(Serialize, Deserialize)]
 struct MeshData {
@@ -42,6 +33,7 @@ struct WireframeData {
     positions: Vec<f32>,
 }
 
+#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize)]
 struct JsonMesh {
     id: String,
@@ -86,17 +78,36 @@ fn main() {
         .arg(
             Arg::with_name("file")
                 .takes_value(true)
+                .short("f")
                 .long("file")
                 .help("Set file to parse")
                 .required(true),
+        )
+        .subcommand(
+            SubCommand::with_name("term")
+                .about("output mesh to terminal")
+                .arg(
+                    Arg::with_name("output_width")
+                        .takes_value(true)
+                        .short("w")
+                        .long("output-width")
+                        .help("Output width [defaults to term width]"),
+                )
+                .arg(
+                    Arg::with_name("output_height")
+                        .takes_value(true)
+                        .short("h")
+                        .long("output-height")
+                        .help(
+                            "Output height [defaults to maintain aspect ratio with scene source]",
+                        ),
+                ),
         )
         .get_matches();
 
     let file_path = arg_matches
         .value_of("file")
         .expect("You must set a file argument!");
-
-    // print!("using input file {}", file_path);
 
     let file = File::open(file_path).expect("Could not open file");
     let reader = BufReader::new(file);
@@ -106,33 +117,48 @@ fn main() {
 
     let (mesh, wireframe) = mesh_json.to_mesh().unwrap();
 
-    // print!("Mesh parsed. Index count: {}", mesh.indices.len());
-
     let scene = Scene::new_test();
 
     let svg_config = SvgConfig::new_default(scene.width as i32, scene.height as i32);
 
     let segments = find_categorized_line_segments(&mesh, &wireframe, &scene);
 
-    // let svg = screen_space_lines_to_fitted_svg(&segments, &svg_config);
-    // print!("{}", svg);
+    if let Some(term_subcommand) = arg_matches.subcommand_matches("term") {
+        let terminal_drawing = draw_terminal(segments, &scene, &term_subcommand);
 
-    let terminal_drawing = draw_terminal(segments, &scene);
-
-    print!("{}", terminal_drawing);
+        println!("{}", terminal_drawing);
+    } else {
+        let svg = screen_space_lines_to_fitted_svg(&segments, &svg_config);
+        println!("{}", svg);
+    }
 }
 
-fn draw_terminal(segments: Vec<LineSegmentCategorized>, scene: &Scene) -> String {
-
+fn draw_terminal(
+    segments: Vec<LineSegmentCategorized>,
+    scene: &Scene,
+    matches: &ArgMatches,
+) -> String {
     let (w, _) = term_size::dimensions().unwrap_or((100, 0));
 
-    let term_width: i32 = w as i32 * 2 - 1;
+    // not entirely sure why the adjustment is needed, the canvas is 2x term as the braille char are
+    // at double density, but the `- 1` is inexplicable
+    let term_canvas_width: i32 = w as i32 * 2 - 1;
+
+    let width: i32 = match matches.value_of("output_width") {
+        Some(w) => w.parse::<i32>().expect("output_height must be a number!"),
+        None => term_canvas_width as i32,
+    };
+
+    let height: i32 = match matches.value_of("output_height") {
+        Some(h) => h.parse::<i32>().expect("output_height must be a number!"),
+        None => (scene.height / scene.width * width as f32) as i32,
+    };
 
     let svg_config = SvgConfig::new(
         scene.width as i32,
         scene.height as i32,
-        Some(term_width as i32),
-        Some((scene.width / scene.height) as i32 * (term_width as i32)),
+        Some(width),
+        Some(height),
         Some(5),
         None,
         None,
@@ -151,9 +177,6 @@ fn draw_terminal(segments: Vec<LineSegmentCategorized>, scene: &Scene) -> String
         .collect();
 
     let mut canvas = Canvas::new(svg_config.width as u32, svg_config.height as u32);
-
-
-    println!("svg_config.width {}", svg_config.width);
 
     for line in lines {
         canvas.line(
