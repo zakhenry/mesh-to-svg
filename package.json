@@ -7,7 +7,9 @@
   "license": "MIT",
   "private": true,
   "scripts": {
+    "wasm:build:release": "wasm-pack build --release -- --features console_log",
     "wasm:build:prod": "wasm-pack build --release",
+    "wasm:build:debug": "wasm-pack build --debug -- --features console_log",
     "wasm:lint:fix": "cargo fix --allow-dirty --allow-staged && cargo fmt",
     "wasm:lint:check": "cargo check && cargo fmt -- --check"
   }
