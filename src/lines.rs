@@ -124,7 +124,7 @@ enum IntersectionVisited {
 }
 
 // @todo there is an annoying amount of cloning going on in here
-pub fn split_lines_by_intersection(lines: Vec<ProjectedLine>) -> Vec<ProjectedSplitLine> {
+pub fn split_lines_by_intersection(lines: &Vec<ProjectedLine>) -> Vec<ProjectedSplitLine> {
     let line_count = lines.len();
 
     // @todo this cache size can be halved in size
@@ -223,7 +223,7 @@ pub fn get_visibility(
     projected_line: &ProjectedLine,
     scene: &Scene,
     ray: &mut Ray,
-    mesh: &Mesh
+    mesh: &Mesh,
 ) -> LineVisibility {
     let screen_space_length = distance(
         &projected_line.screen_space.from,

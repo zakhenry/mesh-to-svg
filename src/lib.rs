@@ -7,7 +7,7 @@ use std::time::Instant;
 
 use wasm_bindgen::prelude::*;
 
-use lines::{get_visibility, LineSegmentCategorized, split_lines_by_intersection};
+use lines::{get_visibility, split_lines_by_intersection, LineSegmentCategorized};
 use mesh::{Mesh, Wireframe};
 use scene::{Ray, Scene};
 use svg_renderer::{screen_space_lines_to_fitted_svg, SvgConfig};
@@ -97,7 +97,7 @@ pub fn find_categorized_line_segments(
     let duration_projection = start_projection.elapsed();
 
     let start_splitting = Instant::now();
-    let split_lines = split_lines_by_intersection(projected);
+    let split_lines = split_lines_by_intersection(&projected);
     let duration_splitting = start_splitting.elapsed();
 
     let start_checking_visibility = Instant::now();
@@ -137,9 +137,7 @@ pub fn partition_visibility(
     scene: &Scene,
     split_lines: &Vec<ProjectedSplitLine>,
 ) -> Vec<LineSegmentCategorized> {
-
     let mut ray = Ray::new();
-    let mut index: usize = 0;
     let segments: Vec<LineSegmentCategorized> = split_lines
         .into_iter()
         .flat_map(|projected_line| {
@@ -147,21 +145,15 @@ pub fn partition_visibility(
                 .split_screen_space_lines
                 .iter()
                 .enumerate()
-                .map(|(_j, line_segment)| {
-                    let seg = LineSegmentCategorized {
-                        visibility: get_visibility(
-                            &line_segment,
-                            &projected_line.projected_line,
-                            &scene,
-                            &mut ray,
-                            &mesh
-                        ),
-                        line_segment: line_segment.to_owned(),
-                    };
-
-                    index += 1;
-
-                    seg
+                .map(|(_j, line_segment)| LineSegmentCategorized {
+                    visibility: get_visibility(
+                        &line_segment,
+                        &projected_line.projected_line,
+                        &scene,
+                        &mut ray,
+                        &mesh,
+                    ),
+                    line_segment: line_segment.to_owned(),
                 })
                 .collect();
 

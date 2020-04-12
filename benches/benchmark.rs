@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 
 use mesh_to_svg::lines::split_lines_by_intersection;
 use mesh_to_svg::mesh::{Mesh, Wireframe};
-use mesh_to_svg::partition_visibility;
 use mesh_to_svg::scene::Scene;
 
 // @todo these structs are duplicated from examples/bin, there should be a way to share them
@@ -64,20 +63,39 @@ fn get_deps(mesh_name: &str) -> (Mesh, Wireframe, Scene) {
 }
 
 pub fn criterion_benchmark(_: &mut Criterion) {
-    let mut c = Criterion::default().sample_size(20);
+    let mut c = Criterion::default().sample_size(10);
 
     let (mesh, wireframe, scene) = get_deps("raspi");
 
     let mut edges = mesh.find_edge_lines(&scene, false);
     edges.append(&mut wireframe.edges());
     let projected = scene.project_lines(&edges);
-    let split_lines = split_lines_by_intersection(projected);
 
-    c.bench_function("get_visibility(raspi)", |b| {
+    c.bench_function("split_lines_by_intersection(raspi)", |b| {
         b.iter(|| {
-            partition_visibility(black_box(&mesh), black_box(&scene), black_box(&split_lines))
+            split_lines_by_intersection(black_box(&projected));
         })
     });
+
+    // let mut group = c.benchmark_group("split_lines_by_intersection");
+    //
+    // for capacity in 0..10usize {
+    //     group.bench_with_input(BenchmarkId::from_parameter(capacity), &capacity, |b, &capacity| {
+    //
+    //         b.iter(|| {
+    //             split_lines_by_intersection(black_box(&projected), black_box(capacity));
+    //         })
+    //     });
+    // }
+    // group.finish();
+
+    // let split_lines = split_lines_by_intersection(&projected);
+    //
+    // c.bench_function("get_visibility(raspi)", |b| {
+    //     b.iter(|| {
+    //         partition_visibility(black_box(&mesh), black_box(&scene), black_box(&split_lines))
+    //     })
+    // });
 }
 
 criterion_group!(benches, criterion_benchmark);

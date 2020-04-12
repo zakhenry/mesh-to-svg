@@ -106,7 +106,6 @@ impl Mesh {
     }
 
     pub fn get_depth_sorted_facets(&self, reference_point: Point3<f32>) -> Vec<Facet> {
-
         let mut sorted_facets = self.facets.clone();
 
         sorted_facets.sort_unstable_by_key(|f| {
