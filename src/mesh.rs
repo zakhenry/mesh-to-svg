@@ -4,8 +4,6 @@ use na::{Point3, Vector3};
 
 use crate::lines::{EdgeCandidate, LineSegment3};
 use crate::scene::Scene;
-use nalgebra::distance_squared;
-use std::cmp::max;
 
 pub struct Mesh {
     pub indices: Vec<usize>,
@@ -21,7 +19,6 @@ pub struct Wireframe {
     pub points: Vec<Point3<f32>>,
 }
 
-#[derive(Clone)]
 pub struct Facet {
     pub normal: Vector3<f32>,
     pub points: Vec<Point3<f32>>,
@@ -103,22 +100,6 @@ impl Mesh {
             normals,
             facets,
         }
-    }
-
-    pub fn get_depth_sorted_facets(&self, reference_point: Point3<f32>) -> Vec<Facet> {
-        let mut sorted_facets = self.facets.clone();
-
-        sorted_facets.sort_unstable_by_key(|f| {
-            let a = distance_squared(&reference_point, &f.points[0]) as i32;
-            let b = distance_squared(&reference_point, &f.points[1]) as i32;
-            let c = distance_squared(&reference_point, &f.points[2]) as i32;
-
-            max(a, max(b, c))
-        });
-
-        // sorted_facets.reverse();
-
-        sorted_facets
     }
 
     pub fn compute_adjacency(&self) -> Vec<Option<usize>> {

@@ -3,7 +3,7 @@ extern crate approx;
 extern crate nalgebra as na;
 extern crate web_sys;
 
-use std::time::Instant;
+
 
 use wasm_bindgen::prelude::*;
 
@@ -84,50 +84,50 @@ pub fn find_categorized_line_segments(
     wireframe: &Wireframe,
     scene: &Scene,
 ) -> Vec<LineSegmentCategorized> {
-    let start_edges = Instant::now();
+    // let start_edges = Instant::now();
 
     let mut edges = mesh.find_edge_lines(&scene, false);
 
-    let duration_edges = start_edges.elapsed();
+    // let duration_edges = start_edges.elapsed();
 
     edges.append(&mut wireframe.edges());
 
-    let start_projection = Instant::now();
+    // let start_projection = Instant::now();
     let projected = scene.project_lines(&edges);
-    let duration_projection = start_projection.elapsed();
+    // let duration_projection = start_projection.elapsed();
 
-    let start_splitting = Instant::now();
+    // let start_splitting = Instant::now();
     let split_lines = split_lines_by_intersection(&projected);
-    let duration_splitting = start_splitting.elapsed();
+    // let duration_splitting = start_splitting.elapsed();
 
-    let start_checking_visibility = Instant::now();
+    // let start_checking_visibility = Instant::now();
     let segments = partition_visibility(mesh, scene, &split_lines);
 
-    let duration_checking_visibility = start_checking_visibility.elapsed();
+    // let duration_checking_visibility = start_checking_visibility.elapsed();
 
-    let total = start_edges.elapsed();
+    // let total = start_edges.elapsed();
 
-    eprintln!(
-        "find_edge_lines took {:?}, {:?}%",
-        duration_edges,
-        duration_edges.as_nanos() as f32 / total.as_nanos() as f32 * 100.0
-    );
-    eprintln!(
-        "project_lines took {:?}, {:?}%",
-        duration_projection,
-        duration_projection.as_nanos() as f32 / total.as_nanos() as f32 * 100.0
-    );
-    eprintln!(
-        "split_lines_by_intersection took {:?}, {:?}%",
-        duration_splitting,
-        duration_splitting.as_nanos() as f32 / total.as_nanos() as f32 * 100.0
-    );
-    eprintln!(
-        "get_visibility took {:?}, {:?}%",
-        duration_checking_visibility,
-        duration_checking_visibility.as_nanos() as f32 / total.as_nanos() as f32 * 100.0
-    );
-    eprintln!("overall took {:?}", total);
+    // eprintln!(
+    //     "find_edge_lines took {:?}, {:?}%",
+    //     duration_edges,
+    //     duration_edges.as_nanos() as f32 / total.as_nanos() as f32 * 100.0
+    // );
+    // eprintln!(
+    //     "project_lines took {:?}, {:?}%",
+    //     duration_projection,
+    //     duration_projection.as_nanos() as f32 / total.as_nanos() as f32 * 100.0
+    // );
+    // eprintln!(
+    //     "split_lines_by_intersection took {:?}, {:?}%",
+    //     duration_splitting,
+    //     duration_splitting.as_nanos() as f32 / total.as_nanos() as f32 * 100.0
+    // );
+    // eprintln!(
+    //     "get_visibility took {:?}, {:?}%",
+    //     duration_checking_visibility,
+    //     duration_checking_visibility.as_nanos() as f32 / total.as_nanos() as f32 * 100.0
+    // );
+    // eprintln!("overall took {:?}", total);
 
     segments
 }
