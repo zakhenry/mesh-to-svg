@@ -3,8 +3,6 @@ extern crate approx;
 extern crate nalgebra as na;
 extern crate web_sys;
 
-
-
 use wasm_bindgen::prelude::*;
 
 use lines::{get_visibility, split_lines_by_intersection, LineSegmentCategorized};

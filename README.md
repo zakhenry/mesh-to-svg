@@ -1,5 +1,7 @@
 # Mesh to SVG
 
+![Example](/doc/raspi.svg)
+
 WASM Library (written in Rust 🦀) to convert meshes (optionally with supplemental wireframe mesh) into an SVG line drawing
 
 It is recommended to use https://github.com/zakhenry/svg-from-wireframe which wraps this library in a more ergonomic interface,
