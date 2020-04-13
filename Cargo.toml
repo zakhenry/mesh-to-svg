@@ -6,10 +6,15 @@ edition = "2018"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+bench = false
 
 [[example]]
 path = "examples/bin.rs"
 name = "mesh-to-svg"
+
+[[bench]]
+name = "benchmark"
+harness = false
 
 [features]
 default = ["console_error_panic_hook"]
@@ -40,6 +45,7 @@ clap = "2.33.0"
 term_size = "0.3.1"
 log-update = "0.1.0"
 ctrlc = "3.1.4"
+criterion = "0.3"
 
 [profile.release]
 # Tell `rustc` to optimize for small code size. https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/codegen-options/index.md#opt-level

@@ -11,6 +11,8 @@ use scene::{Ray, Scene};
 use svg_renderer::{screen_space_lines_to_fitted_svg, SvgConfig};
 use utils::set_panic_hook;
 
+use crate::lines::ProjectedSplitLine;
+
 #[macro_use]
 mod utils;
 pub mod lines;
@@ -80,33 +82,76 @@ pub fn find_categorized_line_segments(
     wireframe: &Wireframe,
     scene: &Scene,
 ) -> Vec<LineSegmentCategorized> {
+    // let start_edges = Instant::now();
+
     let mut edges = mesh.find_edge_lines(&scene, false);
+
+    // let duration_edges = start_edges.elapsed();
+
     edges.append(&mut wireframe.edges());
+
+    // let start_projection = Instant::now();
     let projected = scene.project_lines(&edges);
-    let split_lines = split_lines_by_intersection(projected);
-    let mut ray = Ray::new(&mesh);
-    let mut index: usize = 0;
+    // let duration_projection = start_projection.elapsed();
+
+    // let start_splitting = Instant::now();
+    let split_lines = split_lines_by_intersection(&projected);
+    // let duration_splitting = start_splitting.elapsed();
+
+    // let start_checking_visibility = Instant::now();
+    let segments = partition_visibility(mesh, scene, &split_lines);
+
+    // let duration_checking_visibility = start_checking_visibility.elapsed();
+
+    // let total = start_edges.elapsed();
+
+    // eprintln!(
+    //     "find_edge_lines took {:?}, {:?}%",
+    //     duration_edges,
+    //     duration_edges.as_nanos() as f32 / total.as_nanos() as f32 * 100.0
+    // );
+    // eprintln!(
+    //     "project_lines took {:?}, {:?}%",
+    //     duration_projection,
+    //     duration_projection.as_nanos() as f32 / total.as_nanos() as f32 * 100.0
+    // );
+    // eprintln!(
+    //     "split_lines_by_intersection took {:?}, {:?}%",
+    //     duration_splitting,
+    //     duration_splitting.as_nanos() as f32 / total.as_nanos() as f32 * 100.0
+    // );
+    // eprintln!(
+    //     "get_visibility took {:?}, {:?}%",
+    //     duration_checking_visibility,
+    //     duration_checking_visibility.as_nanos() as f32 / total.as_nanos() as f32 * 100.0
+    // );
+    // eprintln!("overall took {:?}", total);
+
+    segments
+}
+
+pub fn partition_visibility(
+    mesh: &Mesh,
+    scene: &Scene,
+    split_lines: &Vec<ProjectedSplitLine>,
+) -> Vec<LineSegmentCategorized> {
+    let mut ray = Ray::new();
     let segments: Vec<LineSegmentCategorized> = split_lines
-        .iter()
+        .into_iter()
         .flat_map(|projected_line| {
             let culled: Vec<LineSegmentCategorized> = projected_line
                 .split_screen_space_lines
                 .iter()
                 .enumerate()
-                .map(|(_j, line_segment)| {
-                    let seg = LineSegmentCategorized {
-                        visibility: get_visibility(
-                            &line_segment,
-                            &projected_line.projected_line,
-                            &scene,
-                            &mut ray,
-                        ),
-                        line_segment: line_segment.to_owned(),
-                    };
-
-                    index += 1;
-
-                    seg
+                .map(|(_j, line_segment)| LineSegmentCategorized {
+                    visibility: get_visibility(
+                        &line_segment,
+                        &projected_line.projected_line,
+                        &scene,
+                        &mut ray,
+                        &mesh,
+                    ),
+                    line_segment: line_segment.to_owned(),
                 })
                 .collect();
 

@@ -1,7 +1,7 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
-use na::{Matrix4, Point2, Point3, Vector3};
+use na::{distance_squared, Matrix4, Point2, Point3, Vector3};
 
 use crate::lines::{dedupe_lines, LineSegment2, LineSegment3, ProjectedLine};
 use crate::mesh::{Facet, Mesh};
@@ -178,25 +178,23 @@ camera_forward_vector: {camera_forward_vector}",
     }
 }
 
-pub struct Ray<'a> {
+pub struct Ray {
     pub origin: Point3<f32>,
     pub direction: Vector3<f32>,
     pub length: f32,
-    mesh: &'a Mesh,
 }
 
-impl<'a> Ray<'a> {
-    pub fn new(mesh: &'a Mesh) -> Ray<'a> {
+impl Ray {
+    pub fn new() -> Ray {
         Ray {
             origin: Point3::origin(),
             direction: Vector3::zeros(),
             length: 0.0,
-            mesh,
         }
     }
 
-    pub fn intersects_mesh(&self) -> bool {
-        for facet in &self.mesh.facets {
+    pub fn intersects_mesh(&self, mesh: &Mesh) -> bool {
+        for facet in &mesh.facets {
             if let Some(distance) = self.intersects_facet(facet) {
                 if (&self.length - distance) > 0.01 {
                     return true;
@@ -208,6 +206,16 @@ impl<'a> Ray<'a> {
     }
 
     fn intersects_facet(&self, facet: &Facet) -> Option<f32> {
+        let length_squared = self.length * self.length;
+
+        // if the ray does not reach the facet, it cannot intersect. Exit early
+        if distance_squared(&self.origin, &facet.points[0]) > length_squared
+            && distance_squared(&self.origin, &facet.points[1]) > length_squared
+            && distance_squared(&self.origin, &facet.points[2]) > length_squared
+        {
+            return None;
+        }
+
         let edge_1 = &facet.points[1] - &facet.points[0];
         let edge_2 = &facet.points[2] - &facet.points[0];
 
@@ -215,7 +223,8 @@ impl<'a> Ray<'a> {
 
         let det = edge_1.dot(&pvec);
 
-        if det == 0.0 {
+        let epsilon = 0.0000001;
+        if det > -epsilon && det < epsilon {
             return None;
         }
 
