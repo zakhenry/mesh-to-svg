@@ -1,9 +1,11 @@
 extern crate nalgebra as na;
 
-use crate::scene::{Ray, Scene};
 use na::{Point2, Point3, Vector3};
 use nalgebra::{distance, distance_squared};
 use wasm_bindgen::__rt::core::cmp::Ordering;
+
+use crate::mesh::Mesh;
+use crate::scene::{Ray, Scene};
 
 #[derive(Copy, Clone)]
 pub enum LineVisibility {
@@ -18,7 +20,7 @@ pub struct LineSegment2 {
 }
 
 #[derive(Copy, Clone)]
-pub struct LineSegmentCulled {
+pub struct LineSegmentCategorized {
     pub line_segment: LineSegment2,
     pub visibility: LineVisibility,
 }
@@ -122,7 +124,7 @@ enum IntersectionVisited {
 }
 
 // @todo there is an annoying amount of cloning going on in here
-pub fn split_lines_by_intersection(lines: Vec<ProjectedLine>) -> Vec<ProjectedSplitLine> {
+pub fn split_lines_by_intersection(lines: &Vec<ProjectedLine>) -> Vec<ProjectedSplitLine> {
     let line_count = lines.len();
 
     // @todo this cache size can be halved in size
@@ -221,6 +223,7 @@ pub fn get_visibility(
     projected_line: &ProjectedLine,
     scene: &Scene,
     ray: &mut Ray,
+    mesh: &Mesh,
 ) -> LineVisibility {
     let screen_space_length = distance(
         &projected_line.screen_space.from,
@@ -258,7 +261,7 @@ pub fn get_visibility(
     ray.direction = ray_direction;
     ray.length = ray_length;
 
-    match ray.intersects_mesh() {
+    match ray.intersects_mesh(&mesh) {
         false => LineVisibility::VISIBLE,
         true => LineVisibility::OBSCURED,
     }

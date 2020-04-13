@@ -34,3 +34,4 @@ deploy:
     script: npx semantic-release
     on:
       all_branches: true
+      condition: $TRAVIS_BRANCH =~ ^(master|next)$
