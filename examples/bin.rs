@@ -5,14 +5,16 @@ extern crate log_update;
 extern crate term_size;
 
 use std::f32::consts::PI;
+use std::ffi::OsStr;
 use std::fs::File;
 use std::io::stdout;
 use std::io::BufReader;
+use std::path::Path;
+use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
-use std::{fmt, process};
 
 use clap::{App, Arg, ArgMatches, SubCommand};
 use drawille::Canvas;
@@ -20,7 +22,6 @@ use log_update::LogUpdate;
 use nalgebra::{Matrix4, Rotation3, Vector3};
 use serde::{Deserialize, Serialize};
 use serde_json;
-use wasm_bindgen::__rt::core::fmt::Formatter;
 
 use mesh_to_svg::find_categorized_line_segments;
 use mesh_to_svg::lines::{LineSegmentCategorized, LineVisibility};
@@ -48,35 +49,54 @@ struct WireframeData {
 struct JsonMesh {
     id: String,
     mesh: MeshData,
-    edgesMesh: WireframeData,
+    edgesMesh: Option<WireframeData>,
 }
 
-#[derive(Serialize, Deserialize)]
-enum ParserError {
-    Unknown,
+trait Meshable {
+    fn to_mesh(&self) -> (Mesh, Option<Wireframe>);
 }
 
-impl fmt::Debug for ParserError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            ParserError::Unknown => write!(f, "Unknown error!"),
-        }
-    }
-}
-
-impl JsonMesh {
-    pub fn to_mesh(&self) -> Result<(Mesh, Wireframe), ParserError> {
-        Ok((
+impl Meshable for JsonMesh {
+    fn to_mesh(&self) -> (Mesh, Option<Wireframe>) {
+        (
             Mesh::new(
                 self.mesh.indices.to_owned(),
                 self.mesh.positions.to_owned(),
                 self.mesh.normals.to_owned(),
             ),
-            Wireframe::new(
-                self.edgesMesh.indices.to_owned(),
-                self.edgesMesh.positions.to_owned(),
-            ),
-        ))
+            self.edgesMesh
+                .as_ref()
+                .map(|edges| Wireframe::new(edges.indices.to_owned(), edges.positions.to_owned())),
+        )
+    }
+}
+
+impl Meshable for stl_io::IndexedMesh {
+    // @todo - due to the Mesh type needing vertex normals, we have to duplicate facet normals, however
+    // this approach is duplicating vertices too
+    fn to_mesh(&self) -> (Mesh, Option<Wireframe>) {
+        let mut indices = vec![0; self.faces.len() * 3];
+        let mut vertices = vec![0.0; indices.len() * 3];
+        let mut normals = vec![0.0; indices.len() * 3];
+
+        for (triangle_index, triangle) in self.faces.iter().enumerate() {
+            for (index, &vertex_index) in triangle.vertices.iter().enumerate() {
+                let current_index = triangle_index * 3 + index;
+
+                indices[current_index] = current_index;
+
+                let vertex = self.vertices[vertex_index];
+
+                for i in 0..3 {
+                    vertices[current_index * 3 + i] = vertex[i];
+                    normals[current_index * 3 + i] = triangle.normal[i];
+                }
+            }
+        }
+
+        let mesh = Mesh::new(Some(indices), vertices, normals);
+
+        (mesh, None)
     }
 }
 
@@ -124,13 +144,23 @@ fn main() {
         .value_of("file")
         .expect("You must set a file argument!");
 
-    let file = File::open(file_path).expect("Could not open file");
-    let reader = BufReader::new(file);
+    let (mesh, wireframe) = match get_extension_from_filename(&file_path) {
+        Some("json") => {
+            let file = File::open(file_path).expect("Could not open file");
+            let reader = BufReader::new(file);
+            let mesh_json: JsonMesh =
+                serde_json::from_reader(reader).expect("Could not parse JSON mesh file");
 
-    let mesh_json: JsonMesh =
-        serde_json::from_reader(reader).expect("Could not parse JSON mesh file");
+            mesh_json.to_mesh()
+        }
+        Some("stl") => {
+            let mut file = File::open(file_path).expect("Could not open file");
+            let stl = stl_io::read_stl(&mut file).unwrap();
 
-    let (mesh, wireframe) = mesh_json.to_mesh().unwrap();
+            stl.to_mesh()
+        }
+        Some(_) | None => panic!("Unsupported file extension"),
+    };
 
     let scene = Scene::new_test();
 
@@ -149,6 +179,10 @@ fn main() {
         let svg = screen_space_lines_to_fitted_svg(&segments, &svg_config);
         println!("{}", svg);
     }
+}
+
+fn get_extension_from_filename(filename: &str) -> Option<&str> {
+    Path::new(filename).extension().and_then(OsStr::to_str)
 }
 
 fn draw_terminal(
@@ -208,7 +242,7 @@ fn draw_terminal(
     canvas.frame()
 }
 
-fn animate(mesh: &Mesh, wireframe: &Wireframe, matches: &ArgMatches) {
+fn animate(mesh: &Mesh, wireframe: &Option<Wireframe>, matches: &ArgMatches) {
     let mut log_update = LogUpdate::new(stdout()).unwrap();
 
     let running = Arc::new(AtomicBool::new(true));

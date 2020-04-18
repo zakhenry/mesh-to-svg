@@ -29,8 +29,8 @@ pub fn mesh_to_svg_lines(
     mesh_indices: Box<[usize]>,
     mesh_vertices: Box<[f32]>,
     mesh_normals: Box<[f32]>,
-    wireframe_indices: Box<[usize]>,
-    wireframe_vertices: Box<[f32]>,
+    wireframe_indices: Option<Box<[usize]>>,
+    wireframe_vertices: Option<Box<[f32]>>,
     view_matrix: Box<[f32]>,
     projection_matrix: Box<[f32]>,
     mesh_world_matrix: Box<[f32]>,
@@ -61,7 +61,9 @@ pub fn mesh_to_svg_lines(
     );
 
     let mesh = Mesh::new_from_wasm(mesh_indices, mesh_vertices, mesh_normals);
-    let wireframe = Wireframe::new_from_wasm(wireframe_indices, wireframe_vertices);
+    let wireframe =
+        wireframe_vertices.map(|vertices| Wireframe::new_from_wasm(wireframe_indices, vertices));
+
     let scene = scene::Scene::new_from_wasm(
         canvas_width,
         canvas_height,
@@ -79,7 +81,7 @@ pub fn mesh_to_svg_lines(
 
 pub fn find_categorized_line_segments(
     mesh: &Mesh,
-    wireframe: &Wireframe,
+    maybe_wireframe: &Option<Wireframe>,
     scene: &Scene,
 ) -> Vec<LineSegmentCategorized> {
     // let start_edges = Instant::now();
@@ -88,7 +90,9 @@ pub fn find_categorized_line_segments(
 
     // let duration_edges = start_edges.elapsed();
 
-    edges.append(&mut wireframe.edges());
+    if let Some(wireframe) = maybe_wireframe {
+        edges.append(&mut wireframe.edges());
+    }
 
     // let start_projection = Instant::now();
     let projected = scene.project_lines(&edges);

@@ -25,8 +25,14 @@ pub struct Facet {
 }
 
 impl Wireframe {
-    pub fn new_from_wasm(indices_data: Box<[usize]>, vertices_data: Box<[f32]>) -> Wireframe {
-        Wireframe::new(Some(indices_data.into_vec()), vertices_data.into_vec())
+    pub fn new_from_wasm(
+        indices_data: Option<Box<[usize]>>,
+        vertices_data: Box<[f32]>,
+    ) -> Wireframe {
+        Wireframe::new(
+            indices_data.map(|indices| indices.into_vec()),
+            vertices_data.into_vec(),
+        )
     }
     pub fn new(maybe_indices: Option<Vec<usize>>, vertices: Vec<f32>) -> Wireframe {
         let mut points = Vec::with_capacity(vertices.len() / 3);
