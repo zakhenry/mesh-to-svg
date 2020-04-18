@@ -13,6 +13,8 @@ pub struct SvgConfig {
     pub visible: SvgLineConfig,
     pub obscured: Option<SvgLineConfig>,
     pub fit_lines: bool,
+    pub source_canvas_width: i32,
+    pub source_canvas_height: i32,
 }
 
 impl SvgConfig {
@@ -45,10 +47,18 @@ impl SvgConfig {
         svg_config_obscured_stroke: Option<String>,
         svg_config_fit_lines: Option<bool>,
     ) -> SvgConfig {
+        let fit_lines = svg_config_fit_lines.unwrap_or(true);
+
         SvgConfig {
+            source_canvas_width,
+            source_canvas_height,
             width: svg_config_width.unwrap_or(source_canvas_width),
             height: svg_config_height.unwrap_or(source_canvas_height),
-            margin: svg_config_margin.unwrap_or(100),
+            margin: if fit_lines {
+                svg_config_margin.unwrap_or(100)
+            } else {
+                0
+            },
             visible: SvgLineConfig {
                 stroke_width: svg_config_visible_stroke_width.unwrap_or(4),
                 stroke: svg_config_visible_stroke.unwrap_or("black".to_owned()),
@@ -60,7 +70,7 @@ impl SvgConfig {
                 }),
                 Some(true) => None,
             },
-            fit_lines: svg_config_fit_lines.unwrap_or(true),
+            fit_lines,
         }
     }
 }
@@ -69,20 +79,29 @@ pub fn scale_screen_space_lines(
     screen_space_lines: &[LineSegmentCategorized],
     svg_config: &SvgConfig,
 ) -> Vec<LineSegmentCategorized> {
-    let all_points: Vec<Point2<f32>> = screen_space_lines
-        .iter()
-        .flat_map(|seg| vec![seg.line_segment.from, seg.line_segment.to])
-        .collect();
+    let (min_bound, max_bound) = if svg_config.fit_lines {
+        let all_points: Vec<Point2<f32>> = screen_space_lines
+            .iter()
+            .flat_map(|seg| vec![seg.line_segment.from, seg.line_segment.to])
+            .collect();
 
-    let all_x_values: Vec<f32> = all_points.iter().map(|p| p.x).collect();
-    let max_x = all_x_values.iter().cloned().fold(std::f32::NAN, f32::max);
-    let min_x = all_x_values.iter().cloned().fold(std::f32::NAN, f32::min);
-    let all_y_values: Vec<f32> = all_points.iter().map(|p| p.y).collect();
-    let max_y = all_y_values.iter().cloned().fold(std::f32::NAN, f32::max);
-    let min_y = all_y_values.iter().cloned().fold(std::f32::NAN, f32::min);
+        let all_x_values: Vec<f32> = all_points.iter().map(|p| p.x).collect();
+        let max_x = all_x_values.iter().cloned().fold(std::f32::NAN, f32::max);
+        let min_x = all_x_values.iter().cloned().fold(std::f32::NAN, f32::min);
+        let all_y_values: Vec<f32> = all_points.iter().map(|p| p.y).collect();
+        let max_y = all_y_values.iter().cloned().fold(std::f32::NAN, f32::max);
+        let min_y = all_y_values.iter().cloned().fold(std::f32::NAN, f32::min);
 
-    let min_bound = Vector2::new(min_x, min_y);
-    let max_bound = Vector2::new(max_x, max_y);
+        (Vector2::new(min_x, min_y), Vector2::new(max_x, max_y))
+    } else {
+        (
+            Vector2::new(0.0, 0.0),
+            Vector2::new(
+                svg_config.source_canvas_width as f32,
+                svg_config.source_canvas_height as f32,
+            ),
+        )
+    };
 
     let margin = Vector2::new(svg_config.margin as f32, svg_config.margin as f32);
 
@@ -114,15 +133,8 @@ pub fn screen_space_lines_to_fitted_svg(
     screen_space_lines: &[LineSegmentCategorized],
     svg_config: &SvgConfig,
 ) -> String {
-    let svg = match svg_config.fit_lines {
-        false => line_segments_to_svg(screen_space_lines, svg_config),
-        true => {
-            let scaled = scale_screen_space_lines(screen_space_lines, svg_config);
-            line_segments_to_svg(&scaled, svg_config)
-        }
-    };
-
-    svg
+    let scaled = scale_screen_space_lines(screen_space_lines, svg_config);
+    line_segments_to_svg(&scaled, svg_config)
 }
 
 fn line_segments_to_svg(segments: &[LineSegmentCategorized], config: &SvgConfig) -> String {
