@@ -252,10 +252,10 @@ pub fn get_visibility(
     // @todo should be a better way to do this?
     let test_screen_space_point = Point2::new(test_screen_space.x, test_screen_space.y);
 
-    let ray_target = test_view_space;
-    let ray_origin = scene.unproject_point(&test_screen_space_point);
-    let ray_direction = (&ray_target - &ray_origin.coords).normalize();
-    let ray_length = (&ray_origin.coords - &ray_target).norm();
+    let ray_target = scene.unproject_point(&test_screen_space_point);
+    let ray_origin = test_view_space;
+    let ray_direction = (&ray_target.coords - &ray_origin).normalize();
+    let ray_length = (&ray_origin - &ray_target.coords).norm();
 
     ray.origin = Point3::new(ray_origin.x, ray_origin.y, ray_origin.z);
     ray.direction = ray_direction;
