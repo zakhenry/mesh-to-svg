@@ -3,6 +3,7 @@ extern crate nalgebra as na;
 use na::{Point2, Point3, Vector3};
 use nalgebra::{distance, distance_squared};
 use wasm_bindgen::__rt::core::cmp::Ordering;
+use itertools::partition;
 
 use crate::mesh::Mesh;
 use crate::scene::{Ray, Scene};
@@ -127,16 +128,17 @@ pub fn dedupe_lines_faster(lines: Vec<ProjectedLine>) -> Vec<ProjectedLine> {
                     &mut new_entry.screen_space.from,
                     &mut new_entry.screen_space.to,
                 );
+                std::mem::swap(
+                    &mut new_entry.view_space.from,
+                    &mut new_entry.view_space.to,
+                );
                 return new_entry;
             }
             entry.clone()
         })
         .collect();
 
-    ordered_from_to.sort_unstable_by(|a, b| match a.screen_space.from.x < b.screen_space.from.x {
-        true => Ordering::Less,
-        false => Ordering::Greater,
-    });
+    ordered_from_to.sort_unstable_by(|a, b| a.screen_space.from.x.partial_cmp(&b.screen_space.from.x).unwrap());
 
     let mut unique_lines = Vec::new();
     let eps: f32 = 0.001;
@@ -173,6 +175,56 @@ enum IntersectionVisited {
     Untested,
     NoIntersection,
     FoundIntersection(Point2<f32>),
+}
+
+fn construct_projected_split_line(input_line: &ProjectedLine, mut intersection_points: Vec<Point2<f32>>) -> ProjectedSplitLine {
+    let line = input_line.screen_space;
+    let split_screen_space_lines = match intersection_points.len() {
+        0 => vec![input_line.screen_space.clone()],
+        1 => vec![
+            LineSegment2 {
+                from: input_line.screen_space.from.clone(),
+                to: intersection_points[0].clone(),
+            },
+            LineSegment2 {
+                from: intersection_points[0].clone(),
+                to: input_line.screen_space.to.clone(),
+            },
+        ],
+        _ => {
+            intersection_points.sort_unstable_by(|a, b| {
+                match distance_squared(a, &line.from) < distance_squared(b, &line.from) {
+                    true => Ordering::Less,
+                    false => Ordering::Greater,
+                }
+            });
+
+            let mut split_lines = intersection_points
+                .iter()
+                .enumerate()
+                .map(|(i, point)| {
+                    let (from, to) = match i {
+                        0 => (line.from.clone(), point.clone()),
+                        _ => (intersection_points[i - 1].clone(), point.clone()),
+                    };
+
+                    LineSegment2 { from, to }
+                })
+                .collect::<Vec<LineSegment2>>();
+
+            split_lines.push(LineSegment2 {
+                from: split_lines.last().unwrap().to.clone(),
+                to: line.to.clone(),
+            });
+
+            split_lines
+        }
+    };
+
+    ProjectedSplitLine {
+        projected_line: input_line.clone(),
+        split_screen_space_lines,
+    }
 }
 
 // @todo there is an annoying amount of cloning going on in here
@@ -220,54 +272,41 @@ pub fn split_lines_by_intersection(lines: &Vec<ProjectedLine>) -> Vec<ProjectedS
                 }
             }
 
-            let split_screen_space_lines = match split_points.len() {
-                0 => vec![projected_line.screen_space.clone()],
-                1 => vec![
-                    LineSegment2 {
-                        from: projected_line.screen_space.from.clone(),
-                        to: split_points[0].clone(),
-                    },
-                    LineSegment2 {
-                        from: split_points[0].clone(),
-                        to: projected_line.screen_space.to.clone(),
-                    },
-                ],
-                _ => {
-                    split_points.sort_unstable_by(|a, b| {
-                        match distance_squared(a, &line.from) < distance_squared(b, &line.from) {
-                            true => Ordering::Less,
-                            false => Ordering::Greater,
-                        }
-                    });
-
-                    let mut split_lines = split_points
-                        .iter()
-                        .enumerate()
-                        .map(|(i, point)| {
-                            let (from, to) = match i {
-                                0 => (line.from.clone(), point.clone()),
-                                _ => (split_points[i - 1].clone(), point.clone()),
-                            };
-
-                            LineSegment2 { from, to }
-                        })
-                        .collect::<Vec<LineSegment2>>();
-
-                    split_lines.push(LineSegment2 {
-                        from: split_lines.last().unwrap().to.clone(),
-                        to: line.to.clone(),
-                    });
-
-                    split_lines
-                }
-            };
-
-            ProjectedSplitLine {
-                projected_line: projected_line.clone(),
-                split_screen_space_lines,
-            }
+            construct_projected_split_line(&projected_line, split_points)
         })
         .collect::<Vec<ProjectedSplitLine>>()
+}
+
+pub fn split_lines_by_intersection_hopefully_faster(input_lines: &Vec<ProjectedLine>) -> Vec<ProjectedSplitLine> {
+    let mut lines = input_lines.clone();
+
+    let mut left_boundary: usize = 0;
+    let mut result: Vec<ProjectedSplitLine> = Vec::new();
+    for curr_index in 0..lines.len() {
+        let line = lines[curr_index];
+        let mut split_points = Vec::with_capacity(10);
+
+        left_boundary = itertools::partition(&mut lines[left_boundary..curr_index], |entry| {
+            (*entry).screen_space.to.x < line.screen_space.from.x
+        });
+
+        let mut right_boundary = curr_index + 1;
+        while right_boundary < lines.len() && lines[right_boundary].screen_space.from.x <= line.screen_space.to.x {
+            right_boundary += 1;
+        }
+
+        for test_index in left_boundary..right_boundary {
+            if test_index == curr_index {
+                continue;
+            }
+            if let Some(point) = find_intersection(&line.screen_space, &lines[test_index].screen_space) {
+                split_points.push(point);
+            }
+        }
+        result.push(construct_projected_split_line(&line, split_points));
+    }
+
+    result
 }
 
 pub fn get_visibility(

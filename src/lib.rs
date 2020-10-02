@@ -11,7 +11,7 @@ use scene::{Ray, Scene};
 use svg_renderer::{screen_space_lines_to_fitted_svg, SvgConfig};
 use utils::set_panic_hook;
 
-use crate::lines::{dedupe_lines, dedupe_lines_faster, ProjectedSplitLine};
+use crate::lines::{dedupe_lines, dedupe_lines_faster, ProjectedSplitLine, split_lines_by_intersection_hopefully_faster};
 
 #[macro_use]
 mod utils;
@@ -102,11 +102,14 @@ pub fn find_categorized_line_segments(
     eprintln!("projected lines size: {}", projected.len());
     let start_deduplication = Instant::now();
     let deduped = dedupe_lines_faster(projected);
+    // let deduped = dedupe_lines(projected);
     let duration_deduplication = start_deduplication.elapsed();
     eprintln!("deduped lines size: {}", deduped.len());
 
     let start_splitting = Instant::now();
-    let split_lines = split_lines_by_intersection(&deduped);
+    let split_lines = split_lines_by_intersection_hopefully_faster(&deduped);
+    // let split_lines = split_lines_by_intersection(&deduped);
+    eprintln!("split lines size: {}", &split_lines.iter().fold(0, |count, line| count + line.split_screen_space_lines.len()));
     let duration_splitting = start_splitting.elapsed();
 
     let start_checking_visibility = Instant::now();
