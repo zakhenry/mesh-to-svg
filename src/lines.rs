@@ -116,6 +116,58 @@ pub fn dedupe_lines(lines: Vec<ProjectedLine>) -> Vec<ProjectedLine> {
     deduped
 }
 
+/// @todo work out how to make this not take Copy of line segments
+pub fn dedupe_lines_faster(lines: Vec<ProjectedLine>) -> Vec<ProjectedLine> {
+    let mut ordered_from_to: Vec<ProjectedLine> = lines
+        .iter()
+        .map(|entry| {
+            if entry.screen_space.from.x > entry.screen_space.to.x {
+                let mut new_entry = entry.clone();
+                std::mem::swap(
+                    &mut new_entry.screen_space.from,
+                    &mut new_entry.screen_space.to,
+                );
+                return new_entry;
+            }
+            entry.clone()
+        })
+        .collect();
+
+    ordered_from_to.sort_unstable_by(|a, b| match a.screen_space.from.x < b.screen_space.from.x {
+        true => Ordering::Less,
+        false => Ordering::Greater,
+    });
+
+    let mut unique_lines = Vec::new();
+    let eps: f32 = 0.001;
+    let mut lookup_end: usize = 0;
+    for curr_index in 0..ordered_from_to.len() {
+        while lookup_end < ordered_from_to.len() &&
+            // relative_eq!(ordered_from_to[lookup_end].screen_space.from.x , &ordered_from_to[curr].screen_space.from.x ) {
+            ordered_from_to[lookup_end].screen_space.from.x < &ordered_from_to[curr_index].screen_space.from.x + eps
+        {
+            lookup_end += 1;
+        }
+        let mut match_found = false;
+        for comp_index in curr_index + 1..lookup_end {
+            if relative_eq!(
+                ordered_from_to[curr_index].screen_space.to,
+                ordered_from_to[comp_index].screen_space.to
+            ) && relative_eq!(
+                ordered_from_to[curr_index].screen_space.from,
+                ordered_from_to[comp_index].screen_space.from
+            ) {
+                match_found = true;
+                break;
+            }
+        }
+        if !match_found {
+            unique_lines.push(ordered_from_to[curr_index]);
+        }
+    }
+    unique_lines
+}
+
 #[derive(Copy, Clone)]
 enum IntersectionVisited {
     Untested,

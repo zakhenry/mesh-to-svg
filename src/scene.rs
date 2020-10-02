@@ -153,7 +153,7 @@ impl Scene {
             })
             .collect();
 
-        dedupe_lines(projected_lines)
+        projected_lines
     }
 }
 
