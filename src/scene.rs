@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 
 use na::{distance_squared, Matrix4, Point2, Point3, Vector3};
 
-use crate::lines::{dedupe_lines, LineSegment2, LineSegment3, ProjectedLine};
+use crate::lines::{LineSegment2, LineSegment3, ProjectedLine};
 use crate::mesh::{Facet, Mesh};
 
 pub struct Scene {

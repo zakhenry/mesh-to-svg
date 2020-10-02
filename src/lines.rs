@@ -3,7 +3,6 @@ extern crate nalgebra as na;
 use na::{Point2, Point3, Vector3};
 use nalgebra::{distance, distance_squared};
 use wasm_bindgen::__rt::core::cmp::Ordering;
-use itertools::partition;
 
 use crate::mesh::Mesh;
 use crate::scene::{Ray, Scene};
@@ -89,7 +88,7 @@ pub fn find_intersection(a: &LineSegment2, b: &LineSegment2) -> Option<Point2<f3
 }
 
 /// @todo work out how to make this not take Copy of line segments
-pub fn dedupe_lines(lines: Vec<ProjectedLine>) -> Vec<ProjectedLine> {
+pub fn dedupe_lines_naive(lines: Vec<ProjectedLine>) -> Vec<ProjectedLine> {
     let deduped: Vec<ProjectedLine> = lines
         .iter()
         .enumerate()
@@ -118,7 +117,7 @@ pub fn dedupe_lines(lines: Vec<ProjectedLine>) -> Vec<ProjectedLine> {
 }
 
 /// @todo work out how to make this not take Copy of line segments
-pub fn dedupe_lines_faster(lines: Vec<ProjectedLine>) -> Vec<ProjectedLine> {
+pub fn dedupe_lines(lines: Vec<ProjectedLine>) -> Vec<ProjectedLine> {
     let mut ordered_from_to: Vec<ProjectedLine> = lines
         .iter()
         .map(|entry| {
@@ -128,17 +127,20 @@ pub fn dedupe_lines_faster(lines: Vec<ProjectedLine>) -> Vec<ProjectedLine> {
                     &mut new_entry.screen_space.from,
                     &mut new_entry.screen_space.to,
                 );
-                std::mem::swap(
-                    &mut new_entry.view_space.from,
-                    &mut new_entry.view_space.to,
-                );
+                std::mem::swap(&mut new_entry.view_space.from, &mut new_entry.view_space.to);
                 return new_entry;
             }
             entry.clone()
         })
         .collect();
 
-    ordered_from_to.sort_unstable_by(|a, b| a.screen_space.from.x.partial_cmp(&b.screen_space.from.x).unwrap());
+    ordered_from_to.sort_unstable_by(|a, b| {
+        a.screen_space
+            .from
+            .x
+            .partial_cmp(&b.screen_space.from.x)
+            .unwrap()
+    });
 
     let mut unique_lines = Vec::new();
     let eps: f32 = 0.001;
@@ -177,7 +179,10 @@ enum IntersectionVisited {
     FoundIntersection(Point2<f32>),
 }
 
-fn construct_projected_split_line(input_line: &ProjectedLine, mut intersection_points: Vec<Point2<f32>>) -> ProjectedSplitLine {
+fn construct_projected_split_line(
+    input_line: &ProjectedLine,
+    mut intersection_points: Vec<Point2<f32>>,
+) -> ProjectedSplitLine {
     let line = input_line.screen_space;
     let split_screen_space_lines = match intersection_points.len() {
         0 => vec![input_line.screen_space.clone()],
@@ -228,7 +233,7 @@ fn construct_projected_split_line(input_line: &ProjectedLine, mut intersection_p
 }
 
 // @todo there is an annoying amount of cloning going on in here
-pub fn split_lines_by_intersection(lines: &Vec<ProjectedLine>) -> Vec<ProjectedSplitLine> {
+pub fn split_lines_by_intersection_naive(lines: &Vec<ProjectedLine>) -> Vec<ProjectedSplitLine> {
     let line_count = lines.len();
 
     // @todo this cache size can be halved in size
@@ -277,7 +282,16 @@ pub fn split_lines_by_intersection(lines: &Vec<ProjectedLine>) -> Vec<ProjectedS
         .collect::<Vec<ProjectedSplitLine>>()
 }
 
-pub fn split_lines_by_intersection_hopefully_faster(input_lines: &Vec<ProjectedLine>) -> Vec<ProjectedSplitLine> {
+// This depends on using faster version of dedupe_lines(...). Otherwise expects the input_lines to
+// be sorted by an x-coordinate of from point in screen_space, and for each ProjectedLine
+// the x-coordinate of from point must always be less than the x-coordinate of to point.
+//
+// The algorithmic optimisation here is achieved by reducing the number of intersection candidates
+// for each segment. All the segments ordered after the current segment are sorted by from.x,
+// therefore we can easily exclude those where current.to.x < other.from.x. And we keep track of
+// a slice of segments before the current segment, so that current.from.x <= other.to.x. Which with
+// sparse enough segments makes the lookup close to linear. In the worst case it's still quadratic.
+pub fn split_lines_by_intersection(input_lines: &Vec<ProjectedLine>) -> Vec<ProjectedSplitLine> {
     let mut lines = input_lines.clone();
 
     let mut left_boundary: usize = 0;
@@ -291,7 +305,9 @@ pub fn split_lines_by_intersection_hopefully_faster(input_lines: &Vec<ProjectedL
         });
 
         let mut right_boundary = curr_index + 1;
-        while right_boundary < lines.len() && lines[right_boundary].screen_space.from.x <= line.screen_space.to.x {
+        while right_boundary < lines.len()
+            && lines[right_boundary].screen_space.from.x <= line.screen_space.to.x
+        {
             right_boundary += 1;
         }
 
@@ -299,7 +315,9 @@ pub fn split_lines_by_intersection_hopefully_faster(input_lines: &Vec<ProjectedL
             if test_index == curr_index {
                 continue;
             }
-            if let Some(point) = find_intersection(&line.screen_space, &lines[test_index].screen_space) {
+            if let Some(point) =
+                find_intersection(&line.screen_space, &lines[test_index].screen_space)
+            {
                 split_points.push(point);
             }
         }
