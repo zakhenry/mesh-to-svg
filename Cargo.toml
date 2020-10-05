@@ -21,7 +21,7 @@ default = ["console_error_panic_hook"]
 console_log = []
 
 [dependencies]
-wasm-bindgen = "0.2"
+wasm-bindgen = "=0.2.60"
 itertools = "0.9.0"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
