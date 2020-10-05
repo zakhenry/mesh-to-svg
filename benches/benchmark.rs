@@ -4,7 +4,7 @@ use std::io::BufReader;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use serde::{Deserialize, Serialize};
 
-use mesh_to_svg::lines::split_lines_by_intersection;
+use mesh_to_svg::lines::split_lines_by_intersection_naive;
 use mesh_to_svg::mesh::{Mesh, Wireframe};
 use mesh_to_svg::scene::Scene;
 
@@ -73,7 +73,7 @@ pub fn criterion_benchmark(_: &mut Criterion) {
 
     c.bench_function("split_lines_by_intersection(raspi)", |b| {
         b.iter(|| {
-            split_lines_by_intersection(black_box(&projected));
+            split_lines_by_intersection_naive(black_box(&projected));
         })
     });
 

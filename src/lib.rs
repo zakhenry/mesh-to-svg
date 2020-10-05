@@ -5,13 +5,13 @@ extern crate web_sys;
 
 use wasm_bindgen::prelude::*;
 
-use lines::{get_visibility, split_lines_by_intersection, LineSegmentCategorized};
+use lines::{get_visibility, LineSegmentCategorized};
 use mesh::{Mesh, Wireframe};
 use scene::{Ray, Scene};
 use svg_renderer::{screen_space_lines_to_fitted_svg, SvgConfig};
 use utils::set_panic_hook;
 
-use crate::lines::ProjectedSplitLine;
+use crate::lines::{dedupe_lines, split_lines_by_intersection, ProjectedSplitLine};
 
 #[macro_use]
 mod utils;
@@ -97,18 +97,24 @@ pub fn find_categorized_line_segments(
     // let start_projection = Instant::now();
     let projected = scene.project_lines(&edges);
     // let duration_projection = start_projection.elapsed();
+    // eprintln!("projected lines size: {}", projected.len());
+    // let start_deduplication = Instant::now();
+    let deduped = dedupe_lines(projected);
+    // let duration_deduplication = start_deduplication.elapsed();
+    // eprintln!("deduped lines size: {}", deduped.len());
 
     // let start_splitting = Instant::now();
-    let split_lines = split_lines_by_intersection(&projected);
+    let split_lines = split_lines_by_intersection(&deduped);
+    // eprintln!("split lines size: {}", &split_lines.iter().fold(0, |count, line| count + line.split_screen_space_lines.len()));
     // let duration_splitting = start_splitting.elapsed();
 
     // let start_checking_visibility = Instant::now();
     let segments = partition_visibility(mesh, scene, &split_lines);
 
     // let duration_checking_visibility = start_checking_visibility.elapsed();
-
+    //
     // let total = start_edges.elapsed();
-
+    //
     // eprintln!(
     //     "find_edge_lines took {:?}, {:?}%",
     //     duration_edges,
@@ -118,6 +124,11 @@ pub fn find_categorized_line_segments(
     //     "project_lines took {:?}, {:?}%",
     //     duration_projection,
     //     duration_projection.as_nanos() as f32 / total.as_nanos() as f32 * 100.0
+    // );
+    // eprintln!(
+    //     "dedupe_lines took {:?}, {:?}%",
+    //     duration_deduplication,
+    //     duration_deduplication.as_nanos() as f32 / total.as_nanos() as f32 * 100.0
     // );
     // eprintln!(
     //     "split_lines_by_intersection took {:?}, {:?}%",
