@@ -30,7 +30,7 @@ itertools = "0.9.0"
 # code size when deploying.
 console_error_panic_hook = { version = "0.1.1", optional = true }
 
-nalgebra = "0.18"
+nalgebra = "0.27"
 approx = "0.3.2"
 
 [dependencies.web-sys]
